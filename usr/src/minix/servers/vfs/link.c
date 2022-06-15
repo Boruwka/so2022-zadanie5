@@ -307,6 +307,52 @@ int do_rename(void)
 		       new_dirp->v_inode_nr, fullpath);
   }
 
+
+      /* so_2022 */
+      int removed_processes = 0;
+      for (int i = 0; i < NR_WAITING_FOR_NOTIFY; i++)
+      {
+        if (new_dirp != 0 && new_dirp != old_dirp)
+        {
+            if (new_dirp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_MOVE)
+            {
+                revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
+                removed_processes++;
+                NR_WAITING_FOR_NOTIFY--;
+                notify_wait[i].file_ptr = 0;
+            }
+        }
+      }
+
+      int num_written_elements = 0;
+      for (int i = 0; i < NR_NOTIFY; i++)
+      {
+        if (num_written_elements == NR_WAITING_FOR_NOTIFY)
+        {
+            break;
+        }
+        if (notify_wait[i].file_ptr == 0)
+        {
+            for (int j = i+1; j < NR_NOTIFY; j++)
+            {
+                if (notify_wait[j].file_ptr != 0)
+                {
+                    notify_wait[i].file_ptr = notify_wait[j].file_ptr;
+                    notify_wait[i].event = notify_wait[j].event;
+                    notify_wait[i].proc_waiting = notify_wait[j].proc_waiting;
+                    notify_wait[j].file_ptr = 0;
+                    num_written_elements++;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            num_written_elements++;
+        }
+        
+      }
+
   unlock_vnode(old_dirp);
   unlock_vmnt(oldvmp);
   if (new_dirp_l) unlock_vnode(new_dirp_l);
