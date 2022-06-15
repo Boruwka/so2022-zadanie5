@@ -23,6 +23,7 @@
 #include "path.h"
 #include "vnode.h"
 #include "scratchpad.h"
+#include <fcntl.h>
 
 /*===========================================================================*
  *				do_link					     *
@@ -76,6 +77,52 @@ int do_link(void)
   if (r == OK)
 	r = req_link(vp->v_fs_e, dirp->v_inode_nr, fullpath,
 		     vp->v_inode_nr);
+
+      /* so_2022 */
+      int removed_processes = 0;
+      for (int i = 0; i < NR_WAITING_FOR_NOTIFY; i++)
+      {
+        if (dirp != 0)
+        {
+            if (dirp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_CREATE)
+            {
+                revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
+                removed_processes++;
+                NR_WAITING_FOR_NOTIFY--;
+                notify_wait[i].file_ptr = 0;
+                //printf("obudzilem proces\n");
+            }
+        }
+      }
+
+      int num_written_elements = 0;
+      for (int i = 0; i < NR_NOTIFY; i++)
+      {
+        if (num_written_elements == NR_WAITING_FOR_NOTIFY)
+        {
+            break;
+        }
+        if (notify_wait[i].file_ptr == 0)
+        {
+            for (int j = i+1; j < NR_NOTIFY; j++)
+            {
+                if (notify_wait[j].file_ptr != 0)
+                {
+                    notify_wait[i].file_ptr = notify_wait[j].file_ptr;
+                    notify_wait[i].event = notify_wait[j].event;
+                    notify_wait[i].proc_waiting = notify_wait[j].proc_waiting;
+                    notify_wait[j].file_ptr = 0;
+                    num_written_elements++;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            num_written_elements++;
+        }
+        
+      }
 
   unlock_vnode(vp);
   unlock_vnode(dirp);
@@ -417,6 +464,52 @@ int do_slink(void)
 		      vname1, vname1_length - 1, fp->fp_effuid,
 		      fp->fp_effgid);
   }
+
+/* so_2022 */
+      int removed_processes = 0;
+      for (int i = 0; i < NR_WAITING_FOR_NOTIFY; i++)
+      {
+        if (vp != 0)
+        {
+            if (vp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_CREATE)
+            {
+                revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
+                removed_processes++;
+                NR_WAITING_FOR_NOTIFY--;
+                notify_wait[i].file_ptr = 0;
+                //printf("obudzilem proces\n");
+            }
+        }
+      }
+
+      int num_written_elements = 0;
+      for (int i = 0; i < NR_NOTIFY; i++)
+      {
+        if (num_written_elements == NR_WAITING_FOR_NOTIFY)
+        {
+            break;
+        }
+        if (notify_wait[i].file_ptr == 0)
+        {
+            for (int j = i+1; j < NR_NOTIFY; j++)
+            {
+                if (notify_wait[j].file_ptr != 0)
+                {
+                    notify_wait[i].file_ptr = notify_wait[j].file_ptr;
+                    notify_wait[i].event = notify_wait[j].event;
+                    notify_wait[i].proc_waiting = notify_wait[j].proc_waiting;
+                    notify_wait[j].file_ptr = 0;
+                    num_written_elements++;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            num_written_elements++;
+        }
+        
+      }
 
   unlock_vnode(vp);
   unlock_vmnt(vmp);
