@@ -559,6 +559,46 @@ void unpause(void)
 		status = cdev_cancel(dev);
 
 		break;
+    case FP_BLOCKED_ON_NOTIFY:  
+          /* so_2022 */
+          for (int i = 0; i < NR_WAITING_FOR_NOTIFY; i++)
+          {
+            if (fp == notify_wait[i].proc_waiting)
+            {
+                NR_WAITING_FOR_NOTIFY--;
+                notify_wait[i].file_ptr = 0;
+            }
+          }
+
+          int num_written_elements = 0;
+          for (int i = 0; i < NR_NOTIFY; i++)
+          {
+            if (num_written_elements == NR_WAITING_FOR_NOTIFY)
+            {
+                break;
+            }
+            if (notify_wait[i].file_ptr == 0)
+            {
+                for (int j = i+1; j < NR_NOTIFY; j++)
+                {
+                    if (notify_wait[j].file_ptr != 0)
+                    {
+                        notify_wait[i].file_ptr = notify_wait[j].file_ptr;
+                        notify_wait[i].event = notify_wait[j].event;
+                        notify_wait[i].proc_waiting = notify_wait[j].proc_waiting;
+                        notify_wait[j].file_ptr = 0;
+                        num_written_elements++;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                num_written_elements++;
+            }
+            
+        }
+        break;
 	default :
 		panic("VFS: unknown block reason: %d", blocked_on);
   }

@@ -139,13 +139,49 @@ int common_open(char path[PATH_MAX], int oflags, mode_t omode)
 	FD_SET(scratch(fp).file.fd_nr, &fp->fp_cloexec_set);
 
   /* so_2022 */
+  int removed_processes = 0;
   for (int i = 0; i < NR_WAITING_FOR_NOTIFY; i++)
   {
-    if (vp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_OPEN)
+    if (vp != 0)
     {
-        revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
-        printf("obudzilem proces\n");
+        if (vp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_OPEN)
+        {
+            revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
+            removed_processes++;
+            NR_WAITING_FOR_NOTIFY--;
+            notify_wait[i].file_ptr = 0;
+            //printf("obudzilem proces\n");
+        }
     }
+  }
+
+  int num_written_elements = 0;
+  for (int i = 0; i < NR_NOTIFY; i++)
+  {
+    if (num_written_elements == NR_WAITING_FOR_NOTIFY)
+    {
+        break;
+    }
+    if (notify_wait[i].file_ptr == 0)
+    {
+        for (int j = i+1; j < NR_NOTIFY; j++)
+        {
+            if (notify_wait[j].file_ptr != 0)
+            {
+                notify_wait[i].file_ptr = notify_wait[j].file_ptr;
+                notify_wait[i].event = notify_wait[j].event;
+                notify_wait[i].proc_waiting = notify_wait[j].proc_waiting;
+                notify_wait[j].file_ptr = 0;
+                num_written_elements++;
+                break;
+            }
+        }
+    }
+    else
+    {
+        num_written_elements++;
+    }
+    
   }
 
   /* Only do the normal open code if we didn't just create the file. */
