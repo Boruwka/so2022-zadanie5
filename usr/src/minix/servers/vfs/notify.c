@@ -28,17 +28,26 @@ int do_notify(void)
         printf("nie da sie uzyskac wskaznika do tego pliku\n");
         return EBADF;
     }
-    if (m_in.m_lc_vfs_notify.event != NOTIFY_OPEN)
+    if (m_in.m_lc_vfs_notify.event != NOTIFY_OPEN &&
+    m_in.m_lc_vfs_notify.event != NOTIFY_CREATE)
     {
-        // na razie tylko open obsługujemy
         printf("zly deskryptor eventu\n");
         return EINVAL;
     }
-    // na razie olejemy ENOTDIR
     if (NR_WAITING_FOR_NOTIFY >= NR_NOTIFY)
     {
         printf("za duzo procesow czeka\n");
         return ENONOTIFY;
+    }
+
+    if (m_in.m_lc_vfs_notify.event == NOTIFY_CREATE)
+    {
+        // tu create
+        if (!S_ISDIR(file_ptr->v_mode))
+        {
+            return ENOTDIR;
+        }
+        //return EINVAL;
     }
     
     //printf("bede sie dodawac\n");
