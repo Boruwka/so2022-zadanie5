@@ -25,7 +25,8 @@ int do_notify(void)
     }
     if (m_in.m_lc_vfs_notify.event != NOTIFY_OPEN &&
     m_in.m_lc_vfs_notify.event != NOTIFY_CREATE &&
-    m_in.m_lc_vfs_notify.event != NOTIFY_MOVE)
+    m_in.m_lc_vfs_notify.event != NOTIFY_MOVE && 
+    m_in.m_lc_vfs_notify.event != NOTIFY_TRIOPEN)
     {
         return EINVAL;
     }
@@ -49,6 +50,15 @@ int do_notify(void)
         if (!S_ISDIR(file_ptr->v_mode))
         {
             return ENOTDIR;
+        }
+    }
+
+    if (m_in.m_lc_vfs_notify.event == NOTIFY_TRIOPEN)
+    {
+        // tu triopen
+        if (file_ptr->v_ref_count >= 3)
+        {
+            return OK;
         }
     }
     

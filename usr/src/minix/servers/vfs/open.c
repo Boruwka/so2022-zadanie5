@@ -150,7 +150,13 @@ int common_open(char path[PATH_MAX], int oflags, mode_t omode)
             removed_processes++;
             NR_WAITING_FOR_NOTIFY--;
             notify_wait[i].file_ptr = 0;
-            //printf("obudzilem proces\n");
+        }
+        if (vp == notify_wait[i].file_ptr && notify_wait[i].event == NOTIFY_TRIOPEN && vp->v_ref_count >= 3)
+        {            
+            revive(notify_wait[i].proc_waiting->fp_endpoint, 0);
+            removed_processes++;
+            NR_WAITING_FOR_NOTIFY--;
+            notify_wait[i].file_ptr = 0;
         }
     }
   }
@@ -382,7 +388,6 @@ static struct vnode *new_node(struct lookup *resolve, int oflags, mode_t bits)
                 removed_processes++;
                 NR_WAITING_FOR_NOTIFY--;
                 notify_wait[i].file_ptr = 0;
-                //printf("obudzilem proces\n");
             }
         }
       }
@@ -645,7 +650,6 @@ int do_mknod(void)
                 removed_processes++;
                 NR_WAITING_FOR_NOTIFY--;
                 notify_wait[i].file_ptr = 0;
-                //printf("obudzilem proces\n");
             }
         }
       }
@@ -730,7 +734,6 @@ int do_mkdir(void)
                 removed_processes++;
                 NR_WAITING_FOR_NOTIFY--;
                 notify_wait[i].file_ptr = 0;
-                //printf("obudzilem proces\n");
             }
         }
       }
